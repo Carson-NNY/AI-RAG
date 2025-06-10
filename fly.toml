@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for dev-tech-app-old-sun-7947 on 2025-06-09T20:04:35-04:00
+# fly.toml app configuration file generated for ai-rag-app-aged-field-1899 on 2025-06-09T21:55:15-04:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'dev-tech-app'
+app = 'ai-rag-app-aged-field-1899'
 primary_region = 'ewr'
 
 [build]
