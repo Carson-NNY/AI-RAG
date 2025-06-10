@@ -21,3 +21,11 @@ primary_region = 'ewr'
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
+
+[env]
+PORT                         = "8080"
+SPRING_SERVER_ADDRESS        = "0.0.0.0"
+SPRING_DATASOURCE_URL        = "jdbc:${DATABASE_URL}"
+SPRING_DATASOURCE_USERNAME   = "${DATABASE_USER}"
+SPRING_DATASOURCE_PASSWORD   = "${DATABASE_PASSWORD}"
+SPRING_AUTOCONFIGURE_EXCLUDE = "org.springframework.ai.autoconfigure.ollama.OllamaAutoConfiguration"
