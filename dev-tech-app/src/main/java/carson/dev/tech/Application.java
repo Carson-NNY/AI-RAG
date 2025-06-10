@@ -14,7 +14,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication(
     exclude = {
         OllamaAutoConfiguration.class,
-        OpenAiAutoConfiguration.class
     }
 )
 public class Application {
