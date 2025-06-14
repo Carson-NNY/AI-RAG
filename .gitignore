@@ -39,3 +39,4 @@ build/
 /.idea/
 /data/
 /dev-tech-app/data/
+.env

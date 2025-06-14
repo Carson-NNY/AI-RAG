@@ -8,33 +8,41 @@ spring:
     password: postgres
     url: jdbc:postgresql://localhost:5432/postgres
     type: com.zaxxer.hikari.HikariDataSource
-    # hikari连接池配置
+    # Hikari connection pool configuration
     hikari:
-      #连接池名
+      # Connection pool name
       pool-name: HikariCP
-      #最小空闲连接数
+      # Minimum number of idle connections
       minimum-idle: 5
-      # 空闲连接存活最大时间，默认10分钟
+      # Maximum idle time for idle connections, default is 10 minutes
       idle-timeout: 600000
-      # 连接池最大连接数，默认是10
+      # Maximum number of connections in the pool, default is 10
       maximum-pool-size: 10
-      # 此属性控制从池返回的连接的默认自动提交行为,默认值：true
+      # Controls the default auto-commit behavior of connections returned from the pool, default: true
       auto-commit: true
-      # 此属性控制池中连接的最长生命周期，值0表示无限生命周期，默认30分钟
+      # Maximum lifetime of a connection in the pool, 0 means infinite, default is 30 minutes
       max-lifetime: 1800000
-      # 数据库连接超时时间,默认30秒
+      # Database connection timeout, default is 30 seconds
       connection-timeout: 30000
-      # 连接测试query
+      # Connection test query
       connection-test-query: SELECT 1
 
   ai:
     ollama:
       base-url: http://localhost:11434
-#      模型配置 for ollama
+      #      DeepSeek model configuration for ollama
       embedding:
         options:
           num-batch: 512
         model: nomic-embed-text
+    openai:
+      base-url: https://api.openai.com
+      api-key: ${OPENAI_API_KEY}
+      embedding-model: text-embedding-ada-002
+    rag:
+      embed: nomic-embed-text
+
+
 
 redis:
   sdk:

@@ -4,6 +4,8 @@ import org.springframework.ai.ollama.OllamaChatClient;
 import org.springframework.ai.ollama.OllamaEmbeddingClient;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.ollama.api.OllamaOptions;
+import org.springframework.ai.openai.OpenAiEmbeddingClient;
+import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.PgVectorStore;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
@@ -25,6 +27,12 @@ public class OllamaConfig {
         return new OllamaChatClient(ollamaApi);
     }
 
+    @Bean
+    public OpenAiApi openAiApi(@Value("${spring.ai.openai.base-url}") String baseUrl, @Value("${spring.ai.openai.api-key}") String apikey) {
+        return new OpenAiApi(baseUrl, apikey);
+    }
+
+
     /**
      * TokenTextSplitter bean for splitting text into tokens.
      * This is useful for processing large texts in smaller chunks.
@@ -37,33 +45,55 @@ public class OllamaConfig {
     }
 
     /**
-     *  In-memory vector store that can store and search embeddings (via cosine similarity) entirely in RAM.
-     *  Good for prototyping RAG (Retrieval Augmented Generation) workflows or for apps that don’t need persistent vector storage.
+     * SimpleVectorStore bean for managing vector embeddings in memory.
+     * This is useful for small datasets or quick prototyping.
+     * why need it: Store and retrieve vector embeddings for RAG or other AI tasks.
+     * @param model The embedding model to use, e.g., "nomic-embed-text" or OpenAI's embedding model.
      * @param ollamaApi OllamaApi instance for API interactions
+     * @param openAiApi OpenAiApi instance for API interactions
      * @return SimpleVectorStore instance
      */
     @Bean
-    public SimpleVectorStore simpleVectorStore(OllamaApi ollamaApi) {
-        // OllamaEmbeddingClient is used to create embeddings for text data.
-        OllamaEmbeddingClient embeddingClient = new OllamaEmbeddingClient(ollamaApi);
-//       reset this model as the default model for embeddings
-        embeddingClient.withDefaultOptions(OllamaOptions.create().withModel("nomic-embed-text"));
-        return new SimpleVectorStore(embeddingClient);
+    public SimpleVectorStore vectorStore(@Value("${spring.ai.rag.embed}") String model, OllamaApi ollamaApi, OpenAiApi openAiApi) {
+        // If the model is "nomic-embed-text", use OllamaEmbeddingClient(Deepseek), otherwise use OpenAiEmbeddingClient.
+        if ("nomic-embed-text".equalsIgnoreCase(model)) {
+            OllamaEmbeddingClient embeddingClient = new OllamaEmbeddingClient(ollamaApi);
+            embeddingClient.withDefaultOptions(OllamaOptions.create().withModel("nomic-embed-text"));
+            return new SimpleVectorStore(embeddingClient);
+        } else {
+            OpenAiEmbeddingClient embeddingClient = new OpenAiEmbeddingClient(openAiApi);
+            return new SimpleVectorStore(embeddingClient);
+        }
     }
 
+
     /**
-     * PgVectorStore bean for managing vector embeddings in a PostgreSQL database (another way as opposed the method above).
-     *  To scale to larger datasets, persist embeddings across restarts, or use SQL to query/search over embedded content.
+     * PgVectorStore bean for managing vector embeddings in a PostgreSQL database.
+     * This is useful for larger datasets or when persistence is required.
+     * why need it: Store and retrieve vector embeddings for RAG or other AI tasks with persistence.
+     * @param model The embedding model to use, e.g., "nomic-embed-text" or OpenAI's embedding model.
      * @param ollamaApi OllamaApi instance for API interactions
+     * @param openAiApi OpenAiApi instance for API interactions
+     * @param jdbcTemplate JdbcTemplate instance for database operations
      * @return PgVectorStore instance
      */
     @Bean
-    public PgVectorStore pgVectorStore(OllamaApi ollamaApi, JdbcTemplate jdbcTemplate) {
-        // OllamaEmbeddingClient is used to create embeddings for text data.
-        OllamaEmbeddingClient embeddingClient = new OllamaEmbeddingClient(ollamaApi);
-        embeddingClient.withDefaultOptions(
-            OllamaOptions.create().withModel("nomic-embed-text")
-        );
-        return new PgVectorStore(jdbcTemplate, embeddingClient);
+    public PgVectorStore pgVectorStore(@Value("${spring.ai.rag.embed}") String model, OllamaApi ollamaApi, OpenAiApi openAiApi, JdbcTemplate jdbcTemplate) {
+        // The transformation of text into vectors — also called embedding — is a core task handled by an AI model.
+        // So why does your PgVectorStore require a specific AI embedding API?
+        //Because Spring AI’s PgVectorStore is just a wrapper that:
+        //    Calls the embedding model API (Ollama, OpenAI, etc.)
+        //    Gets vectors for your input documents
+        //    Stores those vectors into pgvector (PostgreSQL)
+        //So the AI API is only needed at this level because you're generating the embeddings at runtime, not uploading pre-generated ones.
+        if ("nomic-embed-text".equalsIgnoreCase(model)) {
+            OllamaEmbeddingClient embeddingClient = new OllamaEmbeddingClient(ollamaApi);
+            embeddingClient.withDefaultOptions(OllamaOptions.create().withModel("nomic-embed-text"));
+            return new PgVectorStore(jdbcTemplate, embeddingClient);
+        } else {
+            OpenAiEmbeddingClient embeddingClient = new OpenAiEmbeddingClient(openAiApi);
+            return new PgVectorStore(jdbcTemplate, embeddingClient);
+        }
     }
+
 }

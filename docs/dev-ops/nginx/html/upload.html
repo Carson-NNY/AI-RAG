@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>File Upload</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loader {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex justify-center items-center min-h-screen bg-gray-100">
+<div class="bg-white p-6 rounded-lg shadow-lg w-96 relative">
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="hidden absolute inset-0 bg-white bg-opacity-90 flex flex-col items-center justify-center rounded-lg">
+        <div class="loader mb-4">
+            <svg class="h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2V6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12 18V22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M4.93 4.93L7.76 7.76" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M16.24 16.24L19.07 19.07" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M2 12H6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M18 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M4.93 19.07L7.76 16.24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M16.24 7.76L19.07 4.93" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <p class="text-gray-600">Uploading file, please wait...</p>
+    </div>
+
+    <h2 class="text-xl font-semibold text-center mb-4">Add Knowledge</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <div class="mb-4">
+            <label for="title" class="block text-sm font-medium text-gray-700">Knowledge Title</label>
+            <input type="text" id="title" name="title" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Enter knowledge title" required />
+        </div>
+
+        <div class="mb-4">
+            <label for="file" class="block text-sm font-medium text-gray-700">Upload File</label>
+            <div class="mt-2 border-dashed border-2 border-gray-300 p-4 text-center text-gray-500">
+                <input type="file" id="file" name="file" accept=".pdf,.csv,.txt,.md,.sql,.java" class="hidden" multiple />
+                <label for="file" class="cursor-pointer">
+                    <div>Drag files here or click to upload</div>
+                    <div class="mt-2 text-sm text-gray-400">Supported file types: .pdf, .csv, .txt, .md, .sql, .java</div>
+                </label>
+            </div>
+        </div>
+
+        <div class="mb-4" id="fileList">
+            <ul class="list-disc pl-5 text-gray-700"></ul>
+        </div>
+
+        <div class="flex justify-center">
+            <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                Submit
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    const fileListElement = document.querySelector('#fileList ul');
+
+    document.getElementById('file').addEventListener('change', function (e) {
+        const files = Array.from(e.target.files);
+        fileListElement.innerHTML = '';
+        files.forEach((file, index) => {
+            const listItem = document.createElement('li');
+            listItem.className = 'flex justify-between items-center';
+            listItem.innerHTML = `
+        <span>${file.name}</span>
+        <button type="button" class="text-red-500 hover:text-red-700" onclick="removeFile(${index})">Remove</button>
+      `;
+            fileListElement.appendChild(listItem);
+        });
+    });
+
+    function removeFile(index) {
+        const input = document.getElementById('file');
+        let files = Array.from(input.files);
+        files.splice(index, 1);
+
+        const dataTransfer = new DataTransfer();
+        files.forEach(file => dataTransfer.items.add(file));
+        input.files = dataTransfer.files;
+
+        fileListElement.children[index].remove();
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const input = document.getElementById('file');
+        const files = Array.from(input.files);
+
+        if (files.length === 0) {
+            alert('Please select at least one file first.');
+            return;
+        }
+
+        loadingOverlay.classList.remove('hidden');
+
+        const formData = new FormData();
+        formData.append('ragTag', document.getElementById('title').value);
+        files.forEach(file => formData.append('file', file));
+
+        axios.post('http://localhost:8090/api/v1/rag/file/upload', formData)
+            .then(response => {
+                if (response.data.code === '0000') {
+                    setTimeout(() => {
+                        alert('Upload successful, window will close.');
+                        window.close();
+                    }, 500);
+                } else {
+                    throw new Error(response.data.info || 'Upload failed');
+                }
+            })
+            .catch(error => {
+                alert(error.message);
+            })
+            .finally(() => {
+                loadingOverlay.classList.add('hidden');
+                input.value = '';
+                document.getElementById('title').value = '';
+                fileListElement.innerHTML = '';
+            });
+    });
+</script>
+</body>
+</html>
