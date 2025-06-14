@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'pulse-subtle': 'pulseSubtle 2s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        pulseSubtle: {
+                            '0%, 100%': { opacity: '0.6' },
+                            '50%': { opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .message-animation {
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .typing-indicator {
+            animation: pulseSubtle 1.5s ease-in-out infinite;
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .input-focus {
+            transition: all 0.3s ease;
+        }
+
+        .input-focus:focus {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .user-avatar {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .message-bubble {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .message-bubble::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .message-bubble:hover::before {
+            left: 100%;
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden">
+<div class="container mx-auto max-w-4xl h-screen flex flex-col p-4">
+    <!-- Header -->
+    <div class="glass-effect rounded-2xl p-6 mb-4 text-white">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 avatar rounded-full flex items-center justify-center">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold">AI Chat Assistant</h1>
+                <p class="text-white/80 text-sm">Powered by DeepSeek-R1</p>
+            </div>
+            <div class="flex-1"></div>
+            <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span class="text-sm text-white/80">Online</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages Container -->
+    <div id="messageContainer" class="flex-1 overflow-y-auto custom-scrollbar space-y-4 p-2">
+        <!-- Welcome Message -->
+        <div class="flex justify-start message-animation">
+            <div class="flex items-start space-x-3 max-w-[85%]">
+                <div class="w-8 h-8 avatar rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                    AI
+                </div>
+                <div class="message-bubble bg-white/95 backdrop-blur-sm rounded-2xl rounded-tl-md p-4 shadow-xl">
+                    <p class="text-gray-800">Hello! I'm your AI assistant. How can I help you today?</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="glass-effect rounded-2xl p-6 mt-4">
+        <div class="flex items-end space-x-4">
+            <div class="flex-1 relative">
+                    <textarea
+                            id="messageInput"
+                            placeholder="Type your message..."
+                            class="w-full bg-white/90 backdrop-blur-sm border-0 rounded-xl p-4 pr-12 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/50 input-focus resize-none"
+                            rows="1"
+                            style="min-height: 52px; max-height: 120px;"
+                            onkeypress="handleKeyPress(event)"
+                            oninput="autoResize(this)"
+                    ></textarea>
+                <div class="absolute right-4 bottom-4 text-gray-400 text-xs" id="charCount">0/1000</div>
+            </div>
+            <button
+                    id="sendButton"
+                    onclick="sendMessage()"
+                    class="send-button text-white p-4 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-white/50 flex items-center justify-center min-w-[52px] h-[52px]"
+            >
+                <svg id="sendIcon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                </svg>
+                <div id="loadingSpinner" class="hidden">
+                    <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let isGenerating = false;
+    let currentEventSource = null;
+    let retryCount = 0;
+    const maxRetries = 2;
+
+    // Auto-resize textarea
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+
+        // Update character count
+        const charCount = document.getElementById('charCount');
+        const length = textarea.value.length;
+        charCount.textContent = `${length}/1000`;
+        charCount.className = length > 900 ? 'absolute right-4 bottom-4 text-red-400 text-xs' : 'absolute right-4 bottom-4 text-gray-400 text-xs';
+    }
+
+    // Add message to container
+    function addMessage(content, isUser = false) {
+        const container = document.getElementById('messageContainer');
+        const messageDiv = document.createElement('div');
+
+        messageDiv.className = `flex ${isUser ? 'justify-end' : 'justify-start'} message-animation`;
+
+        if (isUser) {
+            messageDiv.innerHTML = `
+                    <div class="flex items-start space-x-3 max-w-[85%] flex-row-reverse space-x-reverse">
+                        <div class="w-8 h-8 user-avatar rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                            You
+                        </div>
+                        <div class="message-bubble bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl rounded-tr-md p-4 shadow-xl">
+                            <p class="text-white">${escapeHtml(content)}</p>
+                        </div>
+                    </div>
+                `;
+        } else {
+            messageDiv.innerHTML = `
+                    <div class="flex items-start space-x-3 max-w-[85%]">
+                        <div class="w-8 h-8 avatar rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                            AI
+                        </div>
+                        <div class="message-bubble bg-white/95 backdrop-blur-sm rounded-2xl rounded-tl-md p-4 shadow-xl">
+                            <p class="text-gray-800" id="ai-message-${Date.now()}">${content}</p>
+                        </div>
+                    </div>
+                `;
+        }
+
+        container.appendChild(messageDiv);
+        container.scrollTop = container.scrollHeight;
+        return messageDiv;
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Toggle loading state
+    function toggleLoading(loading) {
+        const sendButton = document.getElementById('sendButton');
+        const sendIcon = document.getElementById('sendIcon');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        if (loading) {
+            sendButton.disabled = true;
+            sendIcon.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+        } else {
+            sendButton.disabled = false;
+            sendIcon.classList.remove('hidden');
+            loadingSpinner.classList.add('hidden');
+        }
+    }
+
+    // Create EventSource with proper error handling
+    function createEventSource(apiUrl, aiMessageElement, message) {
+        let buffer = '';
+        let isFirstContent = true;
+        let hasReceivedData = false;
+        let connectionTimeout;
+
+        const eventSource = new EventSource(apiUrl);
+
+        // Connection timeout
+        connectionTimeout = setTimeout(() => {
+            if (!hasReceivedData) {
+                console.log('Connection timeout, attempting retry...');
+                eventSource.close();
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    aiMessageElement.innerHTML = `<span class="text-yellow-600">Retrying connection... (${retryCount}/${maxRetries})</span>`;
+                    setTimeout(() => {
+                        createEventSource(apiUrl, aiMessageElement, message);
+                    }, 2000);
+                    return;
+                } else {
+                    aiMessageElement.innerHTML = '<span class="text-red-500">Connection failed after multiple attempts. Please check if the server is running.</span>';
+                    cleanup();
+                }
+            }
+        }, 15000); // 15 seconds for initial connection
+
+        eventSource.onopen = () => {
+            console.log('EventSource connection established');
+            clearTimeout(connectionTimeout);
+            retryCount = 0; // Reset retry count on successful connection
+        };
+
+        eventSource.onmessage = (event) => {
+            try {
+                hasReceivedData = true;
+                clearTimeout(connectionTimeout);
+
+                const data = JSON.parse(event.data);
+                const content = data.result?.output?.content || '';
+                const finishReason = data.result?.metadata?.finishReason;
+
+                if (content) {
+                    if (isFirstContent) {
+                        buffer = content;
+                        isFirstContent = false;
+                    } else {
+                        buffer += content;
+                    }
+
+                    // Update message with cursor
+                    aiMessageElement.innerHTML = escapeHtml(buffer) + '<span class="typing-indicator">▍</span>';
+
+                    // Auto scroll
+                    const container = document.getElementById('messageContainer');
+                    container.scrollTop = container.scrollHeight;
+                }
+
+                if (finishReason === 'STOP') {
+                    eventSource.close();
+                    currentEventSource = null;
+                    aiMessageElement.innerHTML = escapeHtml(buffer) || 'No response received';
+                    isGenerating = false;
+                    toggleLoading(false);
+                }
+            } catch (error) {
+                console.error('Parse error:', error);
+                aiMessageElement.innerHTML = '<span class="text-red-500">Error parsing response</span>';
+                cleanup();
+            }
+        };
+
+        eventSource.onerror = (error) => {
+            console.error('EventSource error:', error, 'ReadyState:', eventSource.readyState);
+            clearTimeout(connectionTimeout);
+
+            // EventSource readyState: 0 = CONNECTING, 1 = OPEN, 2 = CLOSED
+            if (eventSource.readyState === EventSource.CLOSED) {
+                if (hasReceivedData && buffer) {
+                    // If we got some data, just finish gracefully
+                    aiMessageElement.innerHTML = escapeHtml(buffer);
+                    isGenerating = false;
+                    toggleLoading(false);
+                } else if (retryCount < maxRetries) {
+                    // Retry connection
+                    retryCount++;
+                    aiMessageElement.innerHTML = `<span class="text-yellow-600">Connection lost, retrying... (${retryCount}/${maxRetries})</span>`;
+                    setTimeout(() => {
+                        createEventSource(apiUrl, aiMessageElement, message);
+                    }, 2000);
+                    return;
+                } else {
+                    aiMessageElement.innerHTML = '<span class="text-red-500">Connection error. Please check if the server is running.</span>';
+                }
+            }
+            cleanup();
+        };
+
+        currentEventSource = eventSource;
+        return eventSource;
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+
+        if (!message || isGenerating) return;
+
+        // Reset retry count for new message
+        retryCount = 0;
+
+        // Clear input and reset height
+        input.value = '';
+        input.style.height = 'auto';
+        document.getElementById('charCount').textContent = '0/1000';
+
+        // Add user message
+        addMessage(message, true);
+
+        // Set loading state
+        isGenerating = true;
+        toggleLoading(true);
+
+        // Add AI response placeholder with typing indicator
+        const aiMessageDiv = addMessage('<span class="typing-indicator">AI is thinking...</span>');
+        const aiMessageElement = aiMessageDiv.querySelector('p');
+
+        const apiUrl = `http://localhost:8090/api/v1/ollama/generate_stream?model=deepseek-r1:1.5b&message=${encodeURIComponent(message)}`;
+
+        try {
+            createEventSource(apiUrl, aiMessageElement, message);
+
+            // Overall timeout for the entire response
+            setTimeout(() => {
+                if (isGenerating) {
+                    if (currentEventSource) {
+                        currentEventSource.close();
+                    }
+                    const currentContent = aiMessageElement.textContent;
+                    if (currentContent && !currentContent.includes('AI is thinking') && !currentContent.includes('Error') && !currentContent.includes('timeout')) {
+                        aiMessageElement.innerHTML = escapeHtml(currentContent);
+                    } else {
+                        aiMessageElement.innerHTML = '<span class="text-yellow-600">Response timeout</span>';
+                    }
+                    cleanup();
+                }
+            }, 120000); // 2 minutes total timeout
+
+        } catch (error) {
+            console.error('Error:', error);
+            aiMessageElement.innerHTML = '<span class="text-red-500">Failed to initialize connection</span>';
+            cleanup();
+        }
+    }
+
+    function cleanup() {
+        if (currentEventSource) {
+            currentEventSource.close();
+            currentEventSource = null;
+        }
+        isGenerating = false;
+        toggleLoading(false);
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('messageInput');
+        input.focus();
+
+        // Handle paste events
+        input.addEventListener('paste', (e) => {
+            setTimeout(() => autoResize(input), 0);
+        });
+    });
+</script>
+</body>
+</html>
