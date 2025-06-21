@@ -63,7 +63,7 @@ services:
       - POSTGRES_DB=springai
       - PGPASSWORD=postgres
     volumes:
-      - ./pgvector/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./pgvector/sql:/docker-entrypoint-initdb.d
     logging:
       options:
         max-size: 10m
